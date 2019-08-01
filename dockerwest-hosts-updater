@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+
+from DockerWestHosts.cli.updater import HostsUpdater
+
+updater = HostsUpdater()
+updater.run()
