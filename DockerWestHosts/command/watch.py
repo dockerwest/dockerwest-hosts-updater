@@ -1,4 +1,5 @@
 import argparse
+import docker
 
 from DockerWestHosts.command.base import CommandBase
 
@@ -9,23 +10,51 @@ class WatchDockerEvents(CommandBase):
         self.__name = name
         self.__version = version
         self.__description = description + " watch"
-        self.__args = args
+        self.__file = '/etc/hosts'
+        self.__ip = None
 
-        self.__parser = argparse.ArgumentParser(
+        parser = argparse.ArgumentParser(
             description=self.__description,
             prog=self.__name
         )
-        self.__parser.add_argument(
+        parser.add_argument(
             '--file',
             required=False,
             help='specify file to update (default: /etc/hosts)'
         )
-        self.__parser.add_argument(
+        parser.add_argument(
             '--ip',
             required=False,
             help='set fixed ip - for docker machine or docker desktop'
         )
 
+        flags = parser.parse_args(args)
+
+        if None is not flags.file:
+            self.__file = args.file
+
+        if None is not flags.ip:
+            self.__ip = args.ip
+
     def run(self):
-        args = self.__parser.parse_args(self.__args)
-        print(args)
+        ip = 'dynamic'
+        if None is not self.__ip:
+            ip = self.__ip
+
+        print(self.__description)
+        print('watching docker events and update hosts with: %s' % ip)
+        client = docker.from_env()
+        while True:
+            for event in client.events(decode=True):
+                self.handleevent(event)
+                break
+
+    def handleevent(self, event):
+        if 'status' in event and \
+                (
+                    'start' == event['status']
+                    or 'stop' == event['status']
+                    or 'kill' == event['status']
+                    or 'die' == event['status']
+                ):
+            print(event)
