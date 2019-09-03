@@ -1,6 +1,7 @@
 import argparse
 import mmap
 import fileinput
+import signal
 import docker
 
 from DockerWestHosts.command.base import CommandBase
@@ -20,6 +21,8 @@ class WatchDockerEvents(CommandBase):
 
         self.__client = docker.from_env()
         self.__apiclient = docker.APIClient()
+
+        self.__running = True
 
         parser = argparse.ArgumentParser(
             description=self.__description,
@@ -44,6 +47,10 @@ class WatchDockerEvents(CommandBase):
         if None is not flags.ip:
             self.__ip = flags.ip
 
+        signal.signal(signal.SIGINT, self.stop)
+        signal.signal(signal.SIGTERM, self.stop)
+        signal.signal(signal.SIGQUIT, self.stop)
+
     def run(self):
         ip = 'dynamic'
         if None is not self.__ip:
@@ -61,6 +68,9 @@ class WatchDockerEvents(CommandBase):
         # listen to events and update hosts
         self.__listen_for_events()
 
+    def stop(self, signalname, function):
+        self.__running = False
+
     def __markers(self):
         if not self.__check_markers():
             with open(self.__file, 'a') as hostsfile:
@@ -76,10 +86,13 @@ class WatchDockerEvents(CommandBase):
         return False
 
     def __listen_for_events(self):
-        while True:
+        while self.__running:
             for event in self.__client.events(decode=True):
                 self.__handleevent(event)
                 break
+
+        print("Stopping and clearing hosts file")
+        self.__update_hosts([])
 
     def __handleevent(self, event):
         if 'status' in event and \
@@ -142,17 +155,17 @@ class WatchDockerEvents(CommandBase):
 
         hostslinesstr = "\n".join(hostslines)
 
-        inblock=False
+        inblock = False
         for line in fileinput.input(self.__file, inplace=True):
             checkline = line.rstrip()
             if self.__end_marker == checkline:
-                inblock=False
+                inblock = False
 
             if True is inblock:
                 checkline = ''
 
             if self.__start_marker == checkline:
-                inblock=True
+                inblock = True
                 checkline += "\n%s" % hostslinesstr
 
             if '' != checkline:
