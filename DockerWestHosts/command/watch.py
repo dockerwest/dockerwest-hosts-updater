@@ -2,6 +2,7 @@ import argparse
 import mmap
 import fileinput
 import signal
+import datetime
 import docker
 
 from DockerWestHosts.command.base import CommandBase
@@ -86,10 +87,25 @@ class WatchDockerEvents(CommandBase):
         return False
 
     def __listen_for_events(self):
+        delta = datetime.timedelta(seconds=1)
+        since = datetime.datetime.utcnow()
+        until = datetime.datetime.utcnow() + delta
+        update_hosts = False
         while self.__running:
-            for event in self.__client.events(decode=True):
-                self.__handleevent(event)
-                break
+            for event in self.__client.events(
+                    decode=True,
+                    since=since,
+                    until=until):
+                trigger = self.__handleevent(event)
+                if False is update_hosts and True is trigger:
+                    update_hosts = True
+
+            if True is update_hosts:
+                self.__hosts()
+
+            update_hosts = False
+            since = until
+            until = datetime.datetime.utcnow() + delta
 
         print("Stopping and clearing hosts file")
         self.__update_hosts([])
@@ -102,7 +118,8 @@ class WatchDockerEvents(CommandBase):
                     or 'kill' == event['status']
                     or 'die' == event['status']
                 ):
-            self.__hosts()
+            return True
+        return False
 
     def __hosts(self):
         hosts = []
