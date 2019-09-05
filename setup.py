@@ -22,7 +22,7 @@ setup(
     url="https://dockerwest.gitlab.io",
     packages=find_packages(),
     scripts=['dockerwest-hosts-updater'],
-    install_requires=[],
+    install_requires=['docker'],
     python_requires='>3.4',
     long_description=read('README.md'),
     classifiers=[
