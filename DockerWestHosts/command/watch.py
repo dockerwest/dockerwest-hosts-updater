@@ -138,7 +138,7 @@ class WatchDockerEvents(CommandBase):
         container_info = self.__apiclient.inspect_container(container.name)
         if "Config" in container_info and "Env" in container_info["Config"]:
             for envvar in container_info["Config"]["Env"]:
-                envvarkey, envvarvalue = envvar.split("=")
+                envvarkey, envvarvalue, *remaining = envvar.split("=")
                 if "VIRTUAL_HOST" == envvarkey or "DOMAIN_NAME" == envvarkey:
                     hosts += envvarvalue.split(',')
         if hosts:
