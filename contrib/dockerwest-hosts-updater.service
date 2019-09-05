@@ -1,0 +1,10 @@
+[Unit]
+Description=DockerWest hosts updater
+After=network-online.target docker.service
+BindsTo=docker.service
+
+[Service]
+ExecStart=/usr/bin/dockerwest-hosts-updater watch
+
+[Install]
+WantedBy=multi-user.target
